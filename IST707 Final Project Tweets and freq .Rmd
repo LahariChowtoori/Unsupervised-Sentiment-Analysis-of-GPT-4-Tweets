@@ -1,0 +1,219 @@
+
+```{r}
+#packages needed for the project
+install.packages("stringr") 
+```
+```{r}
+install.packages('CRAN')
+install.packages("slam")
+install.packages("pacman")
+pacman::p_load(tm)
+
+install.packages("wordcloud")
+install.packages('tidyverse')
+install.packages('dplyr')
+install.packages('ggplot2')
+install.packages('plotly')
+
+```
+```{r}
+install.packages("tidytext")
+```
+
+
+```{r}
+install.packages('SnowballC')
+```
+
+```{r}
+#libraries need for the project
+library("stringr")
+library(SnowballC)
+library(ggplot2)
+library(tm)
+library(wordcloud)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidytext)
+```
+
+```{r}
+#reading the data file
+tweetdf = read.csv("tweets.csv")
+```
+
+```{r}
+#function to clean the text
+clean.text = function(x)
+{
+  # convert to lower case
+  x = tolower(x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # some other cleaning text
+  x = gsub('https://','',x)
+  x = gsub('https//','',x)
+  x = gsub('http://','',x)
+  x = gsub('[^[:graph:]]', ' ',x)
+  x = gsub('[[:punct:]]', '', x)
+  x = gsub('[[:cntrl:]]', '', x)
+  x = gsub('\\d+', '', x)
+  x = str_replace_all(x,"[^[:graph:]]", " ")
+  return(x)
+}
+```
+
+```{r}
+#cleaning the text column
+cleanText <- as.data.frame(clean.text(tweetdf$text))
+
+colnames(cleanText)[1] <- "cleantext"
+```
+
+
+```{r}
+#cleaning the user location column
+cleanLoc <- as.data.frame(clean.text(tweetdf$user_location))
+colnames(cleanLoc)[1] <- "cleanLoc"
+```
+
+
+```{r}
+#forming a dataframe only using tweets and date column
+tweet_frq <- tweetdf[, c('date', 'text')]
+```
+
+
+```{r}
+#data frame with only date
+tweet_date <- tweetdf['date']
+```
+
+```{r}
+#created twooo columns
+tweet_date['created'] <- NA
+tweet_date['Created_At_Round'] <- NA
+```
+
+
+```{r}
+#setting the date format for the date column
+tweet_date$created <-  str_remove_all(tweet_date$date, pattern = '\\+00:00')
+```
+
+
+
+```{r}
+#setting the date format for the date column
+tweet_date[['created']] <- as.POSIXct(tweet_date[['created']],
+                                   format = "%Y-%m-%d %H:%M:%S")
+```
+
+
+```{r}
+#setting the date column according to the rounded hours
+tweet_date %>% 
+  mutate(created = created  %>% as.POSIXct())
+
+tweet_date$Created_At_Round  <- round_date(tweet_date$created , "hours")
+
+tweet_date %>% pull(created) %>% min()
+```
+
+```{r}
+#plotting a trend graph for the number of tweets per hour
+plt <- tweet_date %>% 
+  dplyr::count(Created_At_Round) %>% 
+  ggplot(mapping = aes(x = Created_At_Round, y = n)) +
+  theme_light() +
+  geom_line() +
+  xlab(label = 'Date') +
+  ylab(label = NULL) +
+  ggtitle(label = 'Number of Tweets per Hour')
+
+plt %>% ggplotly()
+```
+
+#to get the word frequency
+```{r}
+
+#selecting the text column and cleaning them
+tweet_words <- cleanText %>% 
+  select(cleantext) %>% 
+  unnest_tokens(word, cleantext)
+```
+
+```{r}
+tweet_count <- tweet_words %>% 
+  count(word, sort = TRUE) %>% 
+  head(30) %>% 
+  mutate(word = reorder(word, n))
+```
+
+```{r}
+#ploting the word frequency plot
+tweet_count %>%
+  ggplot(aes(x = word, y = n)) + 
+  geom_col() +
+  coord_flip() + 
+  theme_minimal()
+```
+
+```{r}
+#defining  the stopwords
+new_items <- c("https", "t.co", "amp", "rt","10x","4","3")
+
+stop_words_new <- stop_words %>%
+  pull(word) %>%
+  append(new_items)
+```
+
+```{r}
+#removing the stopwords
+tweet_count <- tweet_words %>% 
+  filter(!word %in% stop_words_new) %>%
+  count(word, sort = TRUE) %>% 
+  head(30) %>% 
+  mutate(word = reorder(word, n))
+```
+
+```{r}
+#ploting the word frequency after reemoving the stopwords
+tweet_count %>%
+  ggplot(aes(x = word, y = n)) + 
+  geom_col() +
+  coord_flip() +
+  theme_minimal()
+```
+
+```{r}
+#ploting the word frequency with cleaned text 
+cleanLoc %>%
+  count(cleanLoc, sort = TRUE) %>%
+  mutate(cleanLoc = reorder(cleanLoc,n)) %>%
+  filter(is.na(cleanLoc) == FALSE & cleanLoc != "") %>%  
+  top_n(15) %>%
+  ggplot(aes(x = cleanLoc,y = n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = "Place",
+       y = "Count",
+       title = "Chatgpt4 Tweets  - unique locations ")
+```
+

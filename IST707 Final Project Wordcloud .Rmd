@@ -1,0 +1,103 @@
+
+```{r}
+#Installed all required packages
+install.packages("wordcloud")
+install.packages("RColorBrewer")
+install.packages("wordcloud2")
+install.packages("tm")
+```
+```{r}
+#Calling the library functions
+library(wordcloud)
+library(RColorBrewer)
+library(wordcloud2)
+library(tm)
+library("stringr")
+library(SnowballC)
+library(ggplot2)
+library(tm)
+library(wordcloud)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidytext)
+
+```
+```{r}
+#Loading the dataset into tweets
+tweets<- read.csv("/Users/laharichowtoori/Downloads/tweets.csv")
+tweets
+
+```
+```{r}
+#Create a vector containing only the text
+Text <- tweets$text
+# Create a corpus  
+docs <- Corpus(VectorSource(Text))
+
+```
+
+```{r}
+#gsub("https\\S*", "", tweets$text) 
+#gsub("@\\S*", "", tweets$text) 
+#gsub("amp", "", tweets$text) 
+#gsub("[\r\n]", "", tweets$text)
+#gsub("[[:punct:]]", "", data$text)
+
+
+```
+```{r}
+#Tokenization of tweets
+tweet_words <- tweets %>% 
+  select(text) %>% 
+  unnest_tokens(word, text)
+```
+
+```{r}
+new_items <- c("https", "t.co", "amp", "rt","10x","4","3")
+#Removing stop words
+stop_words_new <- stop_words %>%
+  pull(word) %>%
+  append(new_items)
+
+```
+
+```{r}
+#Filtering out top 100 words for wordcloud
+tweet_count <- tweet_words %>% 
+  filter(!word %in% stop_words_new) %>%
+  count(word, sort = TRUE) %>% 
+  head(100) %>% 
+  mutate(word = reorder(word, n))
+```
+
+```{r}
+#Displaying top 100 words
+tweet_count
+```
+
+
+
+
+```{r}
+#Creating a document matrix of tweet counts
+dtm <- TermDocumentMatrix(tweet_count) 
+dtm
+#matrix <- as.matrix(dtm) 
+#matrix
+#words <- sort(rowSums(matrix),decreasing=TRUE) 
+#words
+#Creating a dataframe of tweet_count
+df <- data.frame(word = names(tweet_count),freq=tweet_count)
+df
+```
+
+```{r}
+#Creating the wordcloud
+wordcloud(words = df$freq.word, freq = df$freq.n, min.freq = 1,max.words=200, random.order=FALSE, rot.per=0.35,            colors=brewer.pal(8, "Dark2"))
+```
+```{r}
+
+```
+
